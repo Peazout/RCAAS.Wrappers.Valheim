@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCAAS.Wrappers.Valheim", "RCAAS.Wrappers.Valheim\RCAAS.Wrappers.Valheim.csproj", "{F1C23B77-6489-4395-9313-CD651992D76D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F1C23B77-6489-4395-9313-CD651992D76D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1C23B77-6489-4395-9313-CD651992D76D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1C23B77-6489-4395-9313-CD651992D76D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1C23B77-6489-4395-9313-CD651992D76D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4F296688-72E7-47DA-820C-FF6DF3488464}
+	EndGlobalSection
+EndGlobal
