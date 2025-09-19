@@ -22,9 +22,9 @@ namespace RCAAS.Wrappers.Valheim
             AnonymousLogin = true;
         }
 
-        public override bool Initalize(IRCAASContext host)
+        public override bool Initialize(IRCAASContext host)
         {
-            if (!base.Initalize(host)) return false;
+            if (!base.Initialize(host)) return false;
             AnonymousLogin = true;
 
             InputEncoding = Encoding.Unicode;
