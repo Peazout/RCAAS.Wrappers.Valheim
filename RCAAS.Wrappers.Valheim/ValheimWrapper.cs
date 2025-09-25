@@ -22,9 +22,9 @@ namespace RCAAS.Wrappers.Valheim
             AnonymousLogin = true;
         }
 
-        public override bool Initalize(IRCAASContext host)
+        public override bool Initialize(IRCAASContext host)
         {
-            if (!base.Initalize(host)) return false;
+            if (!base.Initialize(host)) return false;
             AnonymousLogin = true;
 
             InputEncoding = Encoding.Unicode;
@@ -102,9 +102,20 @@ namespace RCAAS.Wrappers.Valheim
             {
                 if (msg.IsSteamHandShake)
                 {
-                    DoUserLoginAsync(username: "ValheimUser", externalid: msg.UserID).Wait();
+                    _ = DoUserLoginAsync(username: "ValheimUser", externalid: msg.UserID)
+                        .ContinueWith(t => {
+                            if (t.Exception != null)
+                                MyLog.Error(t.Exception.Flatten().ToString());
+                        }, TaskContinuationOptions.OnlyOnFaulted);
                 }
-                else if (msg.IsSteamDisconnect) { DoUserLogoutAsync(username: msg.Username, externalid: msg.UserID).Wait(); }
+                else if (msg.IsSteamDisconnect)
+                {
+                    _ = DoUserLogoutAsync(username: msg.Username, externalid: msg.UserID)
+                        .ContinueWith(t => {
+                            if (t.Exception != null)
+                                MyLog.Error(t.Exception.Flatten().ToString());
+                        }, TaskContinuationOptions.OnlyOnFaulted);
+                }
 
             }
             catch (Exception ex)
