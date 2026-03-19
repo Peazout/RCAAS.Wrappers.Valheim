@@ -1,35 +1,32 @@
 ﻿using RCAAS.Core.Helpers;
 using RCAAS.Core.Interfaces;
-using RCAAS.Data;
-using System;
-using System.Threading.Tasks;
+using RCAAS.Core.Wrappers;
 
 
-namespace RCAAS.Wrappers.Valheim
+namespace RCAAS.Wrappers.Valheim;
+
+public class ValheimPluginHelperExt : BasePluginHelper
 {
-    public class ValheimPluginHelperExt : BasePluginHelper
+
+    public override BaseArgs GetDefaultArgs()
     {
+        return new ValheimArgsExt();
+    }
 
-        public override BaseArgs GetDefaultArgs()
-        {
-            return new ValheimArgsExt();
-        }
+    public async override Task<IAppWrapperConfig> GetDefaultCmdAppItemAsync()
+    {
+        var item = await base.GetDefaultCmdAppItemAsync();
 
-        public async override Task<IAppWrapperConfig> GetDefaultCmdAppItemAsync()
-        {
-            var item = await base.GetDefaultCmdAppItemAsync();
+        item.Name = "RCAAS Valheim server anno " + DateTime.Now.ToString("yyyy");
+        item.WrapperName = "Valheim";
+        item.Filename = "valheim_server.exe";
+        item.ExternalId = 896660;
+        item.Port = 2456;
+        // if (string.IsNullOrWhiteSpace(item.Password)) item.Password = "AntiqueWhite";
+        item.Port = await EthernetHelper.FindNextFreePortAsync(item.Port);
 
-            item.Name = "RCAAS Valheim server anno " + DateTime.Now.ToString("yyyy");
-            item.WrapperName = "Valheim";
-            item.Filename = "valheim_server.exe";
-            item.ExternalId = 896660;
-            item.Port = 2456;
-            // if (string.IsNullOrWhiteSpace(item.Password)) item.Password = "AntiqueWhite";
-            item.Port = await EthernetHelper.FindNextFreePortAsync(item.Port);
-
-            return item;
-
-        }
+        return item;
 
     }
+
 }

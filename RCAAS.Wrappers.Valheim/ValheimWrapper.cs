@@ -1,182 +1,231 @@
 ﻿using Newtonsoft.Json;
 using RCAAS.Core.Helpers;
 using RCAAS.Core.Interfaces;
-using RCAAS.Wrappers.Steam;
+using RCAAS.Core.Wrappers.Steam;
 using System.Diagnostics;
 using System.Text;
 
+namespace RCAAS.Wrappers.Valheim;
 
-namespace RCAAS.Wrappers.Valheim
+public class ValheimWrapperExt : SteamWrapper
 {
-    public sealed class ValheimWrapperExt : SteamWrapper
+    private ValheimArgsExt? _args;
+
+    public static string WorldFolder(int cmdappid) =>
+        Path.Combine(FilesAndFoldersHelper.CmdAppRootFolder(cmdappid), "World");
+
+    private List<string> SteamIds = [];
+
+    public ValheimWrapperExt()
     {
+        AnonymousLogin = true;
+    }
 
-        private ValheimArgsExt _args;
-
-        public static string WorldFolder(int cmdappid) { return Path.Combine(FilesAndFoldersHelper.CmdAppRootFolder(cmdappid), "World"); }
-
-        private List<string> SteamIds = new List<string>();
-
-        public ValheimWrapperExt()
+    public override bool Initalize(IRCAASContext host)
+    {
+        if (!base.Initalize(host))
         {
-            AnonymousLogin = true;
+            return false;
         }
 
-        public override bool Initialize(IRCAASContext host)
+        AnonymousLogin = true;
+        InputEncoding = Encoding.Unicode;
+
+        if (Config is not null && !string.IsNullOrWhiteSpace(Config.CmdArgs))
         {
-            if (!base.Initialize(host)) return false;
-            AnonymousLogin = true;
-
-            InputEncoding = Encoding.Unicode;
-
-            if (Config != null && !string.IsNullOrWhiteSpace(Config.CmdArgs))
+            var args = JsonConvert.DeserializeObject<ValheimArgsExt>(Config.CmdArgs);
+            if (args is not null)
             {
-                var args = JsonConvert.DeserializeObject<ValheimArgsExt>(Config.CmdArgs);
-                // if (!string.IsNullOrWhiteSpace(args.Password)) args.Password = AppCoreHelper.DecodePasswordFromBase64(args.Password);
-                Config.CmdArgs = args.ToString();
+                Config.CmdArgs = args.ToString() ?? string.Empty;
             }
-
-            return true;
-
         }
 
-        public ValheimArgsExt ValheimSettings
-        {
+        return true;
+    }
 
-            get
+    public ValheimArgsExt ValheimSettings
+    {
+        get
+        {
+            if (_args is not null)
             {
-                if (_args != null) return _args;
-                if ((Config == null) || (Config.CmdArgs == null)) return new ValheimArgsExt();
-                _args = JsonConvert.DeserializeObject<ValheimArgsExt>(Config.CmdArgs);
-                // if (!string.IsNullOrWhiteSpace(args.Password)) args.Password = AppCoreHelper.DecodePasswordFromBase64(args.Password);
                 return _args;
-
             }
 
-        }
-        public override async Task ChangeConfigAsync(IAppWrapperConfig value)
-        {
-            var orgargs = value.CmdArgs;
-            if ((value != null) && (!string.IsNullOrWhiteSpace(value.CmdArgs)))
+            if (Config?.CmdArgs is null)
             {
-                var args = JsonConvert.DeserializeObject<ValheimArgsExt>(value.CmdArgs);
-                // if (!string.IsNullOrWhiteSpace(args.Password)) args.Password = AppCoreHelper.EncodePasswordToBase64(args.Password);
-                value.CmdArgs = args.ToString();
+                return new ValheimArgsExt();
             }
 
-            await base.ChangeConfigAsync(value);
-            // Config is set to value in base. Now we just need to return the text in clear to memory.
-            Config.CmdArgs = orgargs;
-
+            _args = JsonConvert.DeserializeObject<ValheimArgsExt>(Config.CmdArgs);
+            return _args ?? new ValheimArgsExt();
         }
+    }
+    public override async Task ChangeConfigAsync(IAppWrapperConfig value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
 
-        protected override string CreateProcessArgs()
+        var orgArgs = value.CmdArgs;
+        if (!string.IsNullOrWhiteSpace(value.CmdArgs))
         {
-            var str = new StringBuilder();
-            str.Append(" -nographics -batchmode");
-            str.Append($" -name \"{Config.Name}\"");
-            str.Append($" -port {Config.Port}");
-            str.Append($" -world \"{Config.Name}\"");
-            str.Append($" -password \"{ValheimSettings.Password}\"");
-            str.Append($" -savedir \"{WorldFolder(Config.Id)}\"");
-            str.Append(" -public 1");
-            // str.Append(" -logfile \"" + Path.Combine(FilesAndFoldersHelper.CmdAppRootFolder(Config.Id), "ValheimServer.log") + "\"");
-            // Check modifiers
-            if (!String.IsNullOrWhiteSpace(ValheimSettings.Combat)) str.Append($" -modifier combat {ValheimSettings.Combat}");
-            if (!String.IsNullOrWhiteSpace(ValheimSettings.DeathPenalty)) str.Append($" -modifier deathpenalty {ValheimSettings.DeathPenalty}");
-            if (!String.IsNullOrWhiteSpace(ValheimSettings.Resources)) str.Append($" -modifier resources {ValheimSettings.Resources}");
-            if (!String.IsNullOrWhiteSpace(ValheimSettings.Raids)) str.Append($" -modifier raids {ValheimSettings.Raids}");
-            if (!String.IsNullOrWhiteSpace(ValheimSettings.Portals)) str.Append($" -modifier portals {ValheimSettings.Portals}");
-
-            return str.ToString();
-
-        }
-
-        protected override void OutputMessageHandler(object sender, DataReceivedEventArgs e)
-        {
-            var msg = new ValheimMessage(e);
-            if (msg.IsNullMessage || msg.Received.Data.StartsWith("(Filename: ")) return;
-            MyLog.Log(GetLogEvent(NLog.LogLevel.Debug, msg.MessageWithoutTimestamp, Id));
-
-            try
+            var args = JsonConvert.DeserializeObject<ValheimArgsExt>(value.CmdArgs);
+            if (args is not null)
             {
-                if (msg.IsSteamHandShake)
-                {
-                    _ = DoUserLoginAsync(username: "ValheimUser", externalid: msg.UserID)
-                        .ContinueWith(t => {
-                            if (t.Exception != null)
-                                MyLog.Error(t.Exception.Flatten().ToString());
-                        }, TaskContinuationOptions.OnlyOnFaulted);
-                }
-                else if (msg.IsSteamDisconnect)
-                {
-                    _ = DoUserLogoutAsync(username: msg.Username, externalid: msg.UserID)
-                        .ContinueWith(t => {
-                            if (t.Exception != null)
-                                MyLog.Error(t.Exception.Flatten().ToString());
-                        }, TaskContinuationOptions.OnlyOnFaulted);
-                }
-
+                value.CmdArgs = args.ToString() ?? string.Empty;
             }
-            catch (Exception ex)
+        }
+
+        await base.ChangeConfigAsync(value).ConfigureAwait(false);
+
+        if (Config is not null)
+        {
+            Config.CmdArgs = orgArgs;
+        }
+    }
+
+    protected override string CreateProcessArgs()
+    {
+        ArgumentNullException.ThrowIfNull(Config);
+
+        var str = new StringBuilder();
+        str.Append(" -nographics -batchmode");
+        str.Append($" -name \"{Config.Name}\"");
+        str.Append($" -port {Config.Port}");
+        str.Append($" -world \"{Config.Name}\"");
+
+        var password = ValheimSettings.Password;
+        if (!string.IsNullOrWhiteSpace(password))
+        {
+            str.Append($" -password \"{password}\"");
+        }
+
+        str.Append($" -savedir \"{WorldFolder(Config.Id)}\"");
+        str.Append(" -public 1");
+
+        AppendModifierIfSet(str, "combat", ValheimSettings.Combat);
+        AppendModifierIfSet(str, "deathpenalty", ValheimSettings.DeathPenalty);
+        AppendModifierIfSet(str, "resources", ValheimSettings.Resources);
+        AppendModifierIfSet(str, "raids", ValheimSettings.Raids);
+        AppendModifierIfSet(str, "portals", ValheimSettings.Portals);
+
+        return str.ToString();
+    }
+
+    private static void AppendModifierIfSet(StringBuilder builder, string modifierName, string? modifierValue)
+    {
+        if (!string.IsNullOrWhiteSpace(modifierValue))
+        {
+            builder.Append($" -modifier {modifierName} {modifierValue}");
+        }
+    }
+
+    protected override void OutputMessageHandler(object sender, DataReceivedEventArgs e)
+    {
+        var msg = new ValheimMessage(e);
+        if (msg.IsNullMessage || msg.Received.Data?.StartsWith("(Filename: ", StringComparison.Ordinal) == true)
+        {
+            return;
+        }
+
+        MyLog.Log(GetLogEvent(NLog.LogLevel.Debug, msg.MessageWithoutTimestamp, Id));
+
+        try
+        {
+            if (msg.IsSteamHandShake)
             {
-                MyLog.Error(ex.ToString());
-                MyLog.Warn("Message resulted in exception: " + e.Data);
+                _ = HandleUserLoginAsync(msg.UserID);
             }
-
-        }
-
-
-        protected override void BackupFilesToTempFolder(string folder)
-        {
-            var dirs = Directory.GetDirectories(FilesAndFoldersHelper.CmdAppRootFolder(Id), "world*");
-            foreach (var dir in dirs)
+            else if (msg.IsSteamDisconnect)
             {
-                var ignore = new List<string>();
-                //Copy world to a temp Dir
-                DirectoryInfo thisDir = new DirectoryInfo(dir);
-                FilesAndFoldersHelper.Copy(dir, Path.Combine(folder, thisDir.Name), ignore);
+                _ = HandleUserLogoutAsync(msg.Username, msg.UserID);
             }
-
         }
-
-        protected override void BackupCleanUp(string tempfolder)
+        catch (Exception ex)
         {
-            base.BackupCleanUp(tempfolder);
-            if (Users.Count == 0) HasChanged = false;
-
+            MyLog.Error(ex, "Message processing failed");
+            MyLog.Warn($"Message resulted in exception: {e.Data}");
         }
+    }
 
-
-        public override async Task<IAppWrapperConfig> InstallItemAsync(IAppWrapperConfig item)
+    private async Task HandleUserLoginAsync(string? userId)
+    {
+        try
         {
-            item = await base.InstallItemAsync(item);
-
-            await base.ApplyUpdateAsync();
-
-            return await DBHelper.UpdateCmdAppsAsync(item);
-
+            await DoUserLoginAsync(username: "ValheimUser", externalid: userId).ConfigureAwait(false);
         }
-        /// <summary>
-        /// Stop the server, if not force the use the /stop command.
-        /// </summary>
-        /// <param name="forcestop"></param>
-        /// <returns></returns>
-        public override async Task StopAsync(bool forcestop = false)
+        catch (Exception ex)
         {
-            await base.StopAsync(true);
-
+            MyLog.Error(ex, "User login failed");
         }
+    }
 
-
-        public void Save()
+    private async Task HandleUserLogoutAsync(string? username, string? userId)
+    {
+        try
         {
-            Send("save");
-            //Generally this needs a long wait
-            Thread.Sleep(WaitTime);
+            await DoUserLogoutAsync(username: username, externalid: userId).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            MyLog.Error(ex, "User logout failed");
+        }
+    }
 
+
+    protected Task BackupFilesToTempFolder(string tempfolder)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tempfolder);
+
+        var dirs = Directory.GetDirectories(FilesAndFoldersHelper.CmdAppRootFolder(Id), "world*");
+        foreach (var dir in dirs)
+        {
+            var ignore = new List<string>();
+            var thisDir = new DirectoryInfo(dir);
+            FilesAndFoldersHelper.Copy(dir, Path.Combine(tempfolder, thisDir.Name), ignore);
         }
 
+        return Task.CompletedTask;
+    }
+
+    protected async Task BackupCleanUpAsync(string tempfolder)
+    {
+        await base.BackupCleanUpAsync(tempfolder).ConfigureAwait(false);
+
+        if (Users.Count == 0)
+        {
+            HasChanged = false;
+        }
+    }
+
+
+    public override async Task<IAppWrapperConfig> InstallItemAsync(IAppWrapperConfig item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        item = await base.InstallItemAsync(item).ConfigureAwait(false);
+        await base.ApplyUpdateAsync().ConfigureAwait(false);
+
+        return await DBHelper.UpdateCmdAppsAsync(item).ConfigureAwait(false);
+    }
+    /// <summary>
+    /// Stops the Valheim server. Always forces immediate stop.
+    /// </summary>
+    /// <param name="forcestop">This parameter is ignored; stop is always forced.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public override async Task StopAsync(bool forcestop = false)
+    {
+        await base.StopAsync(true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Asynchronously sends a save command to the server and waits for completion.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the wait operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task SaveAsync(CancellationToken cancellationToken = default)
+    {
+        Send("save");
+        await Task.Delay(WaitTime, cancellationToken).ConfigureAwait(false);
     }
 
 }

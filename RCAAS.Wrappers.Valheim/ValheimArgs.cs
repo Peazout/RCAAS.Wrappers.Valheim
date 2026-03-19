@@ -1,23 +1,40 @@
-﻿using RCAAS.Core.Helpers;
+﻿using RCAAS.Core.Wrappers;
 
 
-namespace RCAAS.Wrappers.Valheim
+namespace RCAAS.Wrappers.Valheim;
+
+/// <summary>
+/// Configuration arguments for Valheim server.
+/// </summary>
+public class ValheimArgsExt : BaseArgs
 {
+    /// <summary>
+    /// Gets or sets the server password.
+    /// </summary>
+    public string? Password { get; set; }
 
-	public class ValheimArgsExt : BaseArgs
-	{
+    /// <summary>
+    /// Gets or sets the combat modifier setting.
+    /// </summary>
+    public string? Combat { get; set; }
 
-        public string Password { get; set; }
-        public string Combat { get; set; }
-        public string DeathPenalty { get; set; }
-        public string Resources { get; set; }
-        public string Raids { get; set; }
-        public string Portals { get; set; }
+    /// <summary>
+    /// Gets or sets the death penalty modifier setting.
+    /// </summary>
+    public string? DeathPenalty { get; set; }
 
-        public ValheimArgsExt()
-		{
-		}
+    /// <summary>
+    /// Gets or sets the resources modifier setting.
+    /// </summary>
+    public string? Resources { get; set; }
 
-	}
+    /// <summary>
+    /// Gets or sets the raids modifier setting.
+    /// </summary>
+    public string? Raids { get; set; }
 
+    /// <summary>
+    /// Gets or sets the portals modifier setting.
+    /// </summary>
+    public string? Portals { get; set; }
 }
